@@ -9,7 +9,8 @@ public class Judge {
     }
 
 
-    boolean isGameEnd(Board board) {
+    //if is not end return 0 if cross won return 1 circle won return 2 tie return 3
+    int isGameEnd(Board board) {
         //first check for cross
         for (int i = 0; i < board.SIZE; i++) {
             for (int j = 0; j < board.SIZE; j++) {
@@ -17,7 +18,7 @@ public class Judge {
                     //Game Over Cross won
                     //std::cout << "Game Over\nCross Won\n";
                     board.printBoard();
-                    return true;
+                    return 1;
                 }
             }
         }
@@ -28,7 +29,7 @@ public class Judge {
                     //Game Over Circle won
                     //std::cout << "Game Over\nCircle Won\n";
                     board.printBoard();
-                    return true;
+                    return 2;
                 }
             }
         }
@@ -43,12 +44,21 @@ public class Judge {
         if (counter == 0) {
             //std::cout << "Game Over\nDraw\n";
             board.printBoard();
-            return true;
+            return 3;
         }
-        return false;
+        return 0;
     }
     //returns true if cell is empty and inside the board
-    boolean isMoveValid(Board board, Coordinates coords) {
+    boolean isMoveValid(Board board, Coordinates coords, int symbol) {
+        if(turn % 2 == 0){
+            if(symbol == -1){
+                return false;
+            }
+        }else{
+            if(symbol == 1){
+                return false;
+            }
+        }
         if (board.cellState[coords.x][coords.y] == 0 && coords.x < 3 && coords.x >= 0 && coords.y < 3 && coords.y >= 0) {
             return true;
         }

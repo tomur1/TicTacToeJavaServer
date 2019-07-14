@@ -1,3 +1,5 @@
+import TicTacToe.Game;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -6,30 +8,70 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Server {
 
-    ArrayList<OutputStream> outs = new ArrayList<>();
+    //ids start from 1 because 0 is reserved for communiaction for everyone
+    int IDs = 1;
+
+    //output streams to unity game clients
+    AtomicReference<ArrayList<OutputStream>> outs = new AtomicReference<>();
+
+    //String used to feed data into the game
+    AtomicReference<String> gameInput = new AtomicReference<>();
+
+    AtomicReference<String> gameOutput = new AtomicReference<>();
 
     void start(){
         System.out.println("Starting the server...");
+        outs.set(new ArrayList<>());
         try (var listener = new ServerSocket(59898)) {
-            var pool = Executors.newFixedThreadPool(2);
-            Thread MMaker = new Thread(new Runnable() {
+            var pool = Executors.newFixedThreadPool(20);
+            pool.execute(new Runnable() {
                 @Override
                 public void run() {
-                    while(true){
-                        if(outs.size() == 2){
+                    while (true){
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        if (outs.get().size() == 2) {
                             System.out.println("Starting game");
-                            tellEveryone("start");
+                            tellEveryone(0+",NEWGAME");
+                            pool.execute(new Game(gameInput, gameOutput));
+                            //listener for information from game to players
+                            pool.execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    while(true){
+                                        if (gameOutput.get().isEmpty()){
+                                            try {
+                                                Thread.sleep(10);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }else{
+                                            tellEveryone(gameOutput.get());
+                                            gameOutput.set("");
+                                        }
+
+                                    }
+                                }
+                            });
+                            return;
                         }
                     }
                 }
             });
+
             while (true) {
                 Socket client = listener.accept();
-                outs.add(client.getOutputStream());
+                outs.get().add(client.getOutputStream());
                 pool.execute(new ClientHandling(client));
+                //this line assigns id
+                tellEveryone((IDs++) + "");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -37,11 +79,11 @@ public class Server {
 
     }
 
-    synchronized void tellEveryone(String message){
+   void tellEveryone(String message){
         for (OutputStream out :
-                outs) {
+                outs.get()) {
             PrintWriter pw = new PrintWriter(out);
-            pw.write(message);
+            pw.write(message +"\n");
             pw.flush();
             System.out.println(message);
         }
@@ -59,9 +101,8 @@ public class Server {
             System.out.println("Connected: " + socket);
             try {
                 var in = new Scanner(socket.getInputStream());
-                var out = new PrintWriter(socket.getOutputStream(), true);
                 while (in.hasNextLine()) {
-                   tellEveryone(in.nextLine());
+                   performMove(in.nextLine());
                 }
             } catch (Exception e) {
                 System.out.println("Error:" + socket);
@@ -73,6 +114,11 @@ public class Server {
                 }
                 System.out.println("Closed: " + socket);
             }
+        }
+
+        public void performMove(String move){
+            System.out.println("client sent: " + move);
+            gameInput.set(move);
         }
     }
 }
