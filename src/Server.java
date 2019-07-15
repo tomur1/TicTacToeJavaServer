@@ -108,6 +108,7 @@ public class Server {
                 System.out.println("Error:" + socket);
             } finally {
                 try {
+                    outs.get().remove(socket.getOutputStream());
                     socket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
